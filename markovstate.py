@@ -14,12 +14,14 @@ class MarkovState:
     """Class to keep track of a markov generator in progress.
     """
     COLORS = ["\033[0;31m", "\033[0;32m", "\033[0;34m"]
+    NONE = ""
     RESET = "\033[0m"
 
     def __init__(self):
         self.markov = None
         self.generator = None
         self.colors = {}
+        self.last_path = None
 
     def generate(self, chunks, seed=None, prob=0, offset=0, cln=None,
                  startf=lambda t: True, endchunkf=lambda t: True,
@@ -63,7 +65,7 @@ class MarkovState:
             out = []
             while n > 0:
                 tok = next(self.markov)
-                out.append("%s%s%s" % (self.color(self.sources[tok]), tok, self.RESET))
+                out.append("%s%s" % (self.color(self.sources[tok]), tok))
                 if endchunkf(tok):
                     n -= 1
             return(' '.join(out if not kill else out[:-kill]))
@@ -101,10 +103,11 @@ class MarkovState:
 
     def color(self, paths):
         # Don't color it if it's not unique
-        if len(paths) > 1:
-            return self.RESET
+        if len(paths) > 1 and self.last_path in paths:
+            return self.NONE
 
         path = paths[0]
+        self.last_path = path
         if path in self.colors:
             return self.colors[path]
         else:
