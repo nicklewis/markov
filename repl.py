@@ -154,7 +154,7 @@ than a separate token.
                         yield char
 
         self.markov.train(args["<n>"],
-                          charinput(paths),
+                          paths,
                           noparagraphs=args["--noparagraphs"])
 
     @arg_wrapper("load", "<file>")

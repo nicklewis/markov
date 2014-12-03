@@ -13,14 +13,19 @@ class Markov:
         self.seed = None
         self.data = {}
         self.cln = n
+        self.sources = {}
 
     def set_cln(self, cln):
         self.cln = cln if cln is not None and cln <= self.n else self.n
 
-    def train(self, training_data):
+    def train(self, path, training_data):
         prev = ()
         for token in training_data:
             token = sys.intern(token)
+            if token in self.sources:
+                self.sources[token].add(path)
+            else:
+                self.sources[token] = set([path])
             for pprev in [prev[i:] for i in range(len(prev) + 1)]:
                 if not pprev in self.data:
                     self.data[pprev] = [0, {}]

@@ -2,6 +2,7 @@ import time
 
 import tokenise
 import markov
+import fileinput
 
 
 class MarkovStateError(Exception):
@@ -12,10 +13,13 @@ class MarkovStateError(Exception):
 class MarkovState:
     """Class to keep track of a markov generator in progress.
     """
+    COLORS = ["\033[0;31m", "\033[0;32m", "\033[0;34m"]
+    RESET = "\033[0m"
 
     def __init__(self):
         self.markov = None
         self.generator = None
+        self.colors = {}
 
     def generate(self, chunks, seed=None, prob=0, offset=0, cln=None,
                  startf=lambda t: True, endchunkf=lambda t: True,
@@ -59,7 +63,7 @@ class MarkovState:
             out = []
             while n > 0:
                 tok = next(self.markov)
-                out.append(tok)
+                out.append("%s%s%s" % (self.color(self.sources[tok]), tok, self.RESET))
                 if endchunkf(tok):
                     n -= 1
             return(' '.join(out if not kill else out[:-kill]))
@@ -76,16 +80,36 @@ class MarkovState:
 
         return self.generator(chunks)
 
-    def train(self, n, stream, noparagraphs=False):
+    def train(self, n, paths, noparagraphs=False):
         """Train a new markov chain, overwriting the existing one.
         """
-
-        training_data = tokenise.Tokeniser(stream=stream,
-                                           noparagraphs=noparagraphs)
+        def charinput(path):
+            with fileinput.input(path) as fi:
+                for line in fi:
+                    for char in line:
+                        yield char
 
         self.markov = markov.Markov(n)
-        self.markov.train(training_data)
+        print(paths)
+        for path in paths:
+            training_data = tokenise.Tokeniser(stream=charinput(path),
+                                               noparagraphs=noparagraphs)
+
+            self.markov.train(path, training_data)
+        self.sources = {k: sorted(list(v)) for k, v in self.markov.sources.items()}
         self.generator = None
+
+    def color(self, paths):
+        # Don't color it if it's not unique
+        if len(paths) > 1:
+            return self.RESET
+
+        path = paths[0]
+        if path in self.colors:
+            return self.colors[path]
+        else:
+            self.colors[path] = self.COLORS.pop()
+            return self.colors[path]
 
     def load(self, filename):
         """Load a markov chain from a file.
